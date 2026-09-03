@@ -1,5 +1,14 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Boxes, LayoutDashboard, Package, ArrowLeftRight, Truck, Tags, LogOut } from "lucide-react";
+import {
+  Boxes,
+  LayoutDashboard,
+  Package,
+  ArrowLeftRight,
+  Truck,
+  Tags,
+  BarChart3,
+  LogOut,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,11 +16,13 @@ import type { ReactNode } from "react";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/products", label: "Products", icon: Package },
   { to: "/movements", label: "Movements", icon: ArrowLeftRight },
   { to: "/suppliers", label: "Suppliers", icon: Truck },
   { to: "/categories", label: "Categories", icon: Tags },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
