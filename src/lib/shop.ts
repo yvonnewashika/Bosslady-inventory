@@ -118,7 +118,9 @@ export async function createSale(input: {
       .single(),
   );
 
+  if (!sale) throw new Error("Could not create the sale.");
   const { error } = await supabase.from("sale_items").insert(
+
     input.lines.map((l) => ({
       user_id,
       sale_id: sale.id,
