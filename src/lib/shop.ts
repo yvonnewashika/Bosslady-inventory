@@ -101,7 +101,7 @@ export async function createSale(input: {
     input.lines.reduce((s, l) => s + l.unit_price * l.quantity, 0) - input.discount;
   const cost_total = input.lines.reduce((s, l) => s + l.unit_cost * l.quantity, 0);
 
-  const sale = unwrap(
+  const sale = unwrap<Sale>(
     await supabase
       .from("sales")
       .insert({
@@ -119,6 +119,8 @@ export async function createSale(input: {
   );
 
   const { error } = await supabase.from("sale_items").insert(
+
+
     input.lines.map((l) => ({
       user_id,
       sale_id: sale.id,
