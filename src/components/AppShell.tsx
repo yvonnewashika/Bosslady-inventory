@@ -7,6 +7,7 @@ import {
   Truck,
   Tags,
   BarChart3,
+  ShoppingCart,
   LogOut,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ import type { ReactNode } from "react";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/sales", label: "Sales", icon: ShoppingCart },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/products", label: "Products", icon: Package },
   { to: "/movements", label: "Movements", icon: ArrowLeftRight },

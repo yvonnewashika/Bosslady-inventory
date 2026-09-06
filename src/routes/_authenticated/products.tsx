@@ -4,11 +4,10 @@ import { useState } from "react";
 import { Plus, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
-import { NativeSelect, StatusPill } from "@/components/Field";
+import { StatusPill } from "@/components/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +18,7 @@ import {
 import {
   createProduct,
   deleteProduct,
-  listCategories,
   listProducts,
-  listSuppliers,
   money,
   stockStatus,
   type ProductInput,
@@ -31,9 +28,12 @@ export const Route = createFileRoute("/_authenticated/products")({
   head: () => ({
     meta: [
       { title: "Products — StockRoom Inventory" },
-      { name: "description", content: "Add, search and manage every product, SKU and stock level." },
+      {
+        name: "description",
+        content: "Add products with quantity and price in Kenyan shillings and track stock levels.",
+      },
       { property: "og:title", content: "Products — StockRoom Inventory" },
-      { property: "og:description", content: "Manage products, SKUs, prices and stock levels." },
+      { property: "og:description", content: "Manage products, prices in KES and stock levels." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -44,14 +44,14 @@ export const Route = createFileRoute("/_authenticated/products")({
 const emptyForm: ProductInput = {
   name: "",
   sku: "",
-  description: "",
+  description: null,
   category_id: null,
   supplier_id: null,
   unit_price: 0,
   quantity: 0,
   reorder_level: 5,
   unit: "pcs",
-  location: "",
+  location: null,
 };
 
 function Products() {
@@ -61,8 +61,6 @@ function Products() {
   const [form, setForm] = useState<ProductInput>(emptyForm);
 
   const products = useQuery({ queryKey: ["products"], queryFn: listProducts });
-  const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
-  const suppliers = useQuery({ queryKey: ["suppliers"], queryFn: listSuppliers });
 
   const create = useMutation({
     mutationFn: () => createProduct(form),
@@ -85,14 +83,14 @@ function Products() {
   });
 
   const rows = (products.data ?? []).filter((p) =>
-    `${p.name} ${p.sku} ${p.location ?? ""}`.toLowerCase().includes(q.toLowerCase()),
+    p.name.toLowerCase().includes(q.toLowerCase()),
   );
 
   return (
     <AppShell>
       <PageHeader
         title="Products"
-        subtitle="Your full catalogue with live stock levels."
+        subtitle="Your full catalogue with live stock levels, priced in Kenyan shillings."
         action={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -100,7 +98,7 @@ function Products() {
                 <Plus className="size-4" /> New product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>New product</DialogTitle>
               </DialogHeader>
@@ -111,66 +109,17 @@ function Products() {
                   create.mutate();
                 }}
               >
+                <div className="space-y-2">
+                  <Label htmlFor="name">Product</Label>
+                  <Input
+                    id="name"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g. Sugar 1kg"
+                  />
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      required
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sku">SKU</Label>
-                    <Input
-                      id="sku"
-                      required
-                      value={form.sku}
-                      onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cat">Category</Label>
-                    <NativeSelect
-                      id="cat"
-                      value={form.category_id ?? ""}
-                      onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}
-                    >
-                      <option value="">—</option>
-                      {(categories.data ?? []).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sup">Supplier</Label>
-                    <NativeSelect
-                      id="sup"
-                      value={form.supplier_id ?? ""}
-                      onChange={(e) => setForm({ ...form, supplier_id: e.target.value || null })}
-                    >
-                      <option value="">—</option>
-                      {(suppliers.data ?? []).map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Unit price</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={form.unit_price}
-                      onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })}
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="qty">Quantity</Label>
                     <Input
@@ -182,40 +131,22 @@ function Products() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reorder">Reorder level</Label>
+                    <Label htmlFor="price">Price (KSh)</Label>
                     <Input
-                      id="reorder"
+                      id="price"
                       type="number"
+                      step="1"
                       min="0"
-                      value={form.reorder_level}
-                      onChange={(e) => setForm({ ...form, reorder_level: Number(e.target.value) })}
+                      value={form.unit_price}
+                      onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">Unit</Label>
-                    <Input
-                      id="unit"
-                      value={form.unit}
-                      onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="loc">Storage location</Label>
-                    <Input
-                      id="loc"
-                      value={form.location ?? ""}
-                      onChange={(e) => setForm({ ...form, location: e.target.value })}
-                      placeholder="Aisle B · Rack 4"
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="desc">Description</Label>
-                    <Textarea
-                      id="desc"
-                      value={form.description ?? ""}
-                      onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    />
-                  </div>
+                </div>
+                <div className="rounded-md bg-secondary/60 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Value: </span>
+                  <span className="font-mono">
+                    {money(Number(form.unit_price) * Number(form.quantity))}
+                  </span>
                 </div>
                 <Button type="submit" className="w-full" disabled={create.isPending}>
                   {create.isPending ? "Saving…" : "Save product"}
@@ -230,7 +161,7 @@ function Products() {
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search name, SKU or location"
+          placeholder="Search products"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -240,13 +171,11 @@ function Products() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left">
-              {["Product", "SKU", "Category", "Supplier", "Qty", "Price", "Value", "Status", ""].map(
-                (h) => (
-                  <th key={h} className="label-caps px-4 py-3 font-normal">
-                    {h}
-                  </th>
-                ),
-              )}
+              {["Product", "Qty", "Price", "Value", "Status", ""].map((h) => (
+                <th key={h} className="label-caps px-4 py-3 font-normal">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -254,16 +183,8 @@ function Products() {
               <tr key={p.id} className="border-b border-border/60 last:border-0 hover:bg-secondary/40">
                 <td className="px-4 py-3">
                   <p className="font-medium">{p.name}</p>
-                  {p.location ? (
-                    <p className="text-xs text-muted-foreground">{p.location}</p>
-                  ) : null}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs">{p.sku}</td>
-                <td className="px-4 py-3 text-muted-foreground">{p.categories?.name ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground">{p.suppliers?.name ?? "—"}</td>
-                <td className="px-4 py-3 font-mono">
-                  {p.quantity} {p.unit}
-                </td>
+                <td className="px-4 py-3 font-mono">{p.quantity}</td>
                 <td className="px-4 py-3 font-mono">{money(Number(p.unit_price))}</td>
                 <td className="px-4 py-3 font-mono">
                   {money(Number(p.unit_price) * p.quantity)}
@@ -285,7 +206,7 @@ function Products() {
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
                   {products.isLoading ? "Loading…" : "No products yet — add your first one."}
                 </td>
               </tr>
