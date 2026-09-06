@@ -51,9 +51,17 @@ export type ProductInput = {
   location?: string | null;
 };
 
+export function autoSku(name: string) {
+  const base = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 6) || "ITEM";
+  return `${base}-${Date.now().toString(36).toUpperCase().slice(-4)}`;
+}
+
 export async function createProduct(input: ProductInput) {
   const user_id = await currentUserId();
-  return unwrap(await supabase.from("products").insert({ ...input, user_id }).select().single());
+  const sku = input.sku?.trim() ? input.sku.trim() : autoSku(input.name);
+  return unwrap(
+    await supabase.from("products").insert({ ...input, sku, user_id }).select().single(),
+  );
 }
 
 export async function updateProduct(id: string, input: Partial<ProductInput>) {
@@ -138,4 +146,8 @@ export function stockStatus(p: Pick<Product, "quantity" | "reorder_level">) {
 }
 
 export const money = (value: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+  new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    maximumFractionDigits: 0,
+  }).format(value);
