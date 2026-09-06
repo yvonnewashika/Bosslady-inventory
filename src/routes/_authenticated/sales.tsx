@@ -71,9 +71,15 @@ function Sales() {
 
   const addLine = () => {
     const p = (products.data ?? []).find((x) => x.id === productId);
-    if (!p) return toast.error("Pick a product first.");
+    if (!p) {
+      toast.error("Pick a product first.");
+      return;
+    }
     const quantity = Number(qty);
-    if (!quantity || quantity <= 0) return toast.error("Enter a valid quantity.");
+    if (!quantity || quantity <= 0) {
+      toast.error("Enter a valid quantity.");
+      return;
+    }
     if (quantity > p.quantity) toast.warning(`Only ${p.quantity} ${p.unit} in stock.`);
     setLines((prev) => [
       ...prev,
