@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Boxes,
+  Sparkles,
   LayoutDashboard,
   Package,
   ArrowLeftRight,
@@ -39,8 +39,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background lg:flex">
       <aside className="border-b border-sidebar-border bg-sidebar lg:h-screen lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:sticky lg:top-0">
         <div className="flex items-center gap-2 px-5 py-5">
-          <Boxes className="size-5 text-primary" />
-          <span className="font-display text-lg font-bold tracking-tight">StockRoom</span>
+          <Sparkles className="size-5 text-primary" />
+          <span className="font-display text-lg font-bold tracking-tight">Bosslady</span>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible">
           {nav.map(({ to, label, icon: Icon }) => (
