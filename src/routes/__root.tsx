@@ -79,16 +79,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "StockRoom — Inventory Management" },
+      { title: "Bosslady Beauty & Cosmetics — Inventory System" },
       {
         name: "description",
         content:
-          "Track products, stock levels, suppliers and every stock movement in one warehouse-grade dashboard.",
+          "Track cosmetics, beauty products, hair supplies and sales for Bosslady Beauty & Cosmetics.",
       },
-      { property: "og:title", content: "StockRoom — Inventory Management" },
+      { property: "og:title", content: "Bosslady Beauty & Cosmetics — Inventory System" },
       {
         property: "og:description",
-        content: "Track products, stock levels, suppliers and stock movements in real time.",
+        content: "Track cosmetics, beauty products, hair supplies and sales in real time.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
