@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroAsset from "../assets/hero-beauty.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -60,7 +59,7 @@ function Index() {
       <section className="mx-auto max-w-6xl px-6 pb-24">
         <div className="panel overflow-hidden p-0">
           <img
-            src={heroAsset.url}
+            src="/hero-beauty.jpg"
             alt="Cosmetics and beauty hairdressing products arranged in a modern salon"
             width={1344}
             height={768}
