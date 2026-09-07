@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroAsset from "../assets/hero-beauty.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
