@@ -135,7 +135,7 @@ function AuthPage() {
                     id="su-name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Yvonne W."
+                   /* placeholder="Yvonne W."*/
                   />
                 </div>
                 <div className="space-y-2">

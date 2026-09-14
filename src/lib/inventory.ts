@@ -22,7 +22,13 @@ async function currentUserId() {
   return data.user.id;
 }
 
-function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
+function unwrap<T>({
+  data,
+  error,
+}: {
+  data: T | null;
+  error: { message: string } | null;
+}): T {
   if (error) throw new Error(error.message);
   return data as T;
 }
@@ -44,7 +50,13 @@ export type ProductInput = {
   description?: string | null;
   category_id?: string | null;
   supplier_id?: string | null;
+
+  // What you paid for one unit
+  cost_price: number;
+
+  // What you normally charge the customer for one unit
   unit_price: number;
+
   quantity: number;
   reorder_level: number;
   unit: string;
@@ -52,40 +64,94 @@ export type ProductInput = {
 };
 
 export function autoSku(name: string) {
-  const base = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 6) || "ITEM";
+  const base =
+    name
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "")
+      .slice(0, 6) || "ITEM";
+
   return `${base}-${Date.now().toString(36).toUpperCase().slice(-4)}`;
 }
 
 export async function createProduct(input: ProductInput) {
   const user_id = await currentUserId();
-  const sku = input.sku?.trim() ? input.sku.trim() : autoSku(input.name);
+
+  const sku = input.sku?.trim()
+    ? input.sku.trim()
+    : autoSku(input.name);
+
   return unwrap(
-    await supabase.from("products").insert({ ...input, sku, user_id }).select().single(),
+    await supabase
+      .from("products")
+      .insert({
+        ...input,
+        sku,
+        user_id,
+      })
+      .select()
+      .single(),
   );
 }
 
-export async function updateProduct(id: string, input: Partial<ProductInput>) {
-  return unwrap(await supabase.from("products").update(input).eq("id", id).select().single());
+export async function updateProduct(
+  id: string,
+  input: Partial<ProductInput>,
+) {
+  return unwrap(
+    await supabase
+      .from("products")
+      .update(input)
+      .eq("id", id)
+      .select()
+      .single(),
+  );
 }
 
 export async function deleteProduct(id: string) {
-  const { error } = await supabase.from("products").delete().eq("id", id);
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id);
+
   if (error) throw new Error(error.message);
 }
 
 /* ---------------- categories ---------------- */
 
 export async function listCategories(): Promise<Category[]> {
-  return unwrap(await supabase.from("categories").select("*").order("name"));
+  return unwrap(
+    await supabase
+      .from("categories")
+      .select("*")
+      .order("name"),
+  );
 }
 
-export async function createCategory(input: { name: string; description?: string | null }) {
+export async function createCategory(input: {
+  name: string;
+  description?: string | null;
+}) {
   const user_id = await currentUserId();
-  return unwrap(await supabase.from("categories").insert({ ...input, user_id }).select().single());
+
+  return unwrap(
+    await supabase
+      .from("categories")
+      .insert({
+        ...input,
+        user_id,
+      })
+      .select()
+      .single(),
+  );
 }
 
 export async function deleteCategory(id: string) {
-  const { error } = await supabase.from("categories").delete().eq("id", id);
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", id);
+
   if (error) throw new Error(error.message);
 }
 
@@ -100,22 +166,43 @@ export type SupplierInput = {
 };
 
 export async function listSuppliers(): Promise<Supplier[]> {
-  return unwrap(await supabase.from("suppliers").select("*").order("name"));
+  return unwrap(
+    await supabase
+      .from("suppliers")
+      .select("*")
+      .order("name"),
+  );
 }
 
 export async function createSupplier(input: SupplierInput) {
   const user_id = await currentUserId();
-  return unwrap(await supabase.from("suppliers").insert({ ...input, user_id }).select().single());
+
+  return unwrap(
+    await supabase
+      .from("suppliers")
+      .insert({
+        ...input,
+        user_id,
+      })
+      .select()
+      .single(),
+  );
 }
 
 export async function deleteSupplier(id: string) {
-  const { error } = await supabase.from("suppliers").delete().eq("id", id);
+  const { error } = await supabase
+    .from("suppliers")
+    .delete()
+    .eq("id", id);
+
   if (error) throw new Error(error.message);
 }
 
 /* ---------------- stock movements ---------------- */
 
-export async function listMovements(limit = 100): Promise<MovementWithProduct[]> {
+export async function listMovements(
+  limit = 100,
+): Promise<MovementWithProduct[]> {
   return unwrap(
     await supabase
       .from("stock_movements")
@@ -132,14 +219,24 @@ export async function createMovement(input: {
   note?: string | null;
 }) {
   const user_id = await currentUserId();
+
   return unwrap(
-    await supabase.from("stock_movements").insert({ ...input, user_id }).select().single(),
+    await supabase
+      .from("stock_movements")
+      .insert({
+        ...input,
+        user_id,
+      })
+      .select()
+      .single(),
   );
 }
 
 /* ---------------- derived ---------------- */
 
-export function stockStatus(p: Pick<Product, "quantity" | "reorder_level">) {
+export function stockStatus(
+  p: Pick<Product, "quantity" | "reorder_level">,
+) {
   if (p.quantity <= 0) return "out" as const;
   if (p.quantity <= p.reorder_level) return "low" as const;
   return "ok" as const;
