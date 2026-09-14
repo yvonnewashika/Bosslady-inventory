@@ -75,7 +75,7 @@ function Categories() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Beverages"
+
             />
           </div>
           <div className="space-y-2">
