@@ -59,7 +59,7 @@ function Index() {
       <section className="mx-auto max-w-6xl px-6 pb-24">
         <div className="panel overflow-hidden p-0">
           <img
-            src="/hero-beauty.jpg"
+            src={`${import.meta.env.BASE_URL}hero-beauty.jpg`}
             alt="Cosmetics and beauty hairdressing products arranged in a modern salon"
             width={1344}
             height={768}
