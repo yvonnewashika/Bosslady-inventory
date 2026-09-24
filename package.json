@@ -16,11 +16,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
-<<<<<<< HEAD
-    "@capacitor/cli": "^8.4.3",
-=======
     "@capacitor/cli": "^8.5.1",
->>>>>>> 5fb61bbe4094b295f409c0685ae1bd5908710752
     "@capacitor/core": "^8.5.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -87,6 +83,7 @@
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^15.15.0",
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
