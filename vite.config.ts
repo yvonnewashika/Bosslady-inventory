@@ -17,11 +17,15 @@ export default defineConfig({
 
   plugins: [
     tailwindcss(),
+<<<<<<< HEAD
     tanstackStart({
       spa: {
         enabled: true,
       },
     }),
+=======
+    tanstackStart(),
+>>>>>>> 5fb61bbe4094b295f409c0685ae1bd5908710752
     react(),
   ],
 });
