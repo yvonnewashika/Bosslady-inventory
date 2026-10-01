@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.stockroom.inventory',
   appName: 'StockRoom',
-  webDir: '.output/public'
+  webDir: 'dist/client'
 };
 
 export default config;
