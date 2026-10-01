@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { StatusPill } from "@/components/Field";
@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import {
   createProduct,
-  deleteProduct,
   listProducts,
+  updateProduct,
   money,
   stockStatus,
   type ProductInput,
+  type ProductWithRefs,
 } from "@/lib/inventory";
 
 export const Route = createFileRoute("/_authenticated/products")({
@@ -65,31 +66,51 @@ function Products() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [form, setForm] = useState<ProductInput>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const products = useQuery({
     queryKey: ["products"],
     queryFn: listProducts,
   });
 
-  const create = useMutation({
-    mutationFn: () => createProduct(form),
-    onSuccess: () => {
-      toast.success("Product added");
-      setForm(emptyForm);
-      setOpen(false);
-      qc.invalidateQueries({ queryKey: ["products"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const save = useMutation({
+    mutationFn: () =>
+      editingId
+        ? updateProduct(editingId, form)
+        : createProduct(form),
 
-  const remove = useMutation({
-    mutationFn: deleteProduct,
     onSuccess: () => {
-      toast.success("Product deleted");
+      toast.success(
+        editingId ? "Product updated" : "Product added",
+      );
+
+      setForm(emptyForm);
+      setEditingId(null);
+      setOpen(false);
+
       qc.invalidateQueries({ queryKey: ["products"] });
     },
+
     onError: (e: Error) => toast.error(e.message),
   });
+  const openEditProduct = (p: ProductWithRefs) => {
+    setForm({
+      name: p.name,
+      sku: p.sku ?? "",
+      description: p.description ?? null,
+      category_id: p.category_id ?? null,
+      supplier_id: p.supplier_id ?? null,
+      cost_price: Number(p.cost_price),
+      unit_price: Number(p.unit_price),
+      quantity: Number(p.quantity),
+      reorder_level: Number(p.reorder_level),
+      unit: p.unit,
+      location: p.location ?? null,
+    });
+
+    setEditingId(p.id);
+    setOpen(true);
+  };
 
   const rows = (products.data ?? []).filter((p) =>
     p.name.toLowerCase().includes(q.toLowerCase()),
@@ -110,7 +131,9 @@ function Products() {
 
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>New product</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Edit product" : "New product"}
+                </DialogTitle>
               </DialogHeader>
 
               <form
@@ -134,7 +157,7 @@ function Products() {
                     );
                   }
 
-                  create.mutate();
+                 save.mutate();
                 }}
               >
                 <div className="space-y-2">
@@ -256,10 +279,20 @@ function Products() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={create.isPending}
+                  disabled={save.isPending}
                 >
-                  {create.isPending ? "Saving…" : "Save product"}
+                  {save.isPending
+                    ? editingId
+                      ? "Updating…"
+                      : "Saving…"
+                    : editingId
+                      ? "Update product"
+                      : "Save product"}
                 </Button>
+
+
+
+
               </form>
             </DialogContent>
           </Dialog>
@@ -341,10 +374,10 @@ function Products() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => remove.mutate(p.id)}
-                    aria-label={`Delete ${p.name}`}
+                    onClick={() => openEditProduct(p)}
+                    aria-label={`Edit ${p.name}`}
                   >
-                    <Trash2 className="size-4 text-destructive" />
+                    <Pencil className="size-4" />
                   </Button>
                 </td>
               </tr>
