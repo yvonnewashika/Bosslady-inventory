@@ -4,13 +4,16 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  base: "/Bosslady-inventory/",
+  base: process.env.VITE_BASE_PATH || "./",
+
   server: {
     port: 8080,
   },
+
   resolve: {
     tsconfigPaths: true,
   },
+
   plugins: [
     tanstackStart({
       spa: {
