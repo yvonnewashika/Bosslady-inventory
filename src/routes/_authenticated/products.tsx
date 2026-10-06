@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Pencil, Search } from "lucide-react";
+import { Plus, Pencil, Search, Download } from "lucide-react";
 import { toast } from "sonner";
+
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { StatusPill } from "@/components/Field";
 import { Button } from "@/components/ui/button";
@@ -72,6 +75,189 @@ function Products() {
     queryKey: ["products"],
     queryFn: listProducts,
   });
+const [downloadingCatalogue, setDownloadingCatalogue] = useState(false);
+
+const downloadCatalogue = () => {
+  const catalogueProducts = products.data ?? [];
+
+  if (catalogueProducts.length === 0) {
+    toast.info("There are no products to include in the catalogue.");
+    return;
+  }
+
+  try {
+    setDownloadingCatalogue(true);
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const generatedOn = new Date().toLocaleDateString("en-KE");
+
+    // Calculate total stock value
+    const totalStockValue = catalogueProducts.reduce((total, product) => {
+      const quantity = Number(product.quantity ?? 0);
+      const costPrice = Number(product.cost_price ?? 0);
+
+      return total + quantity * costPrice;
+    }, 0);
+
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("PRODUCT CATALOGUE", 14, 15);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    doc.text(
+      `Generated: ${generatedOn}`,
+      14,
+      22
+    );
+
+    doc.text(
+      `Products: ${catalogueProducts.length}`,
+      14,
+      28
+    );
+
+    doc.text(
+      `Estimated Stock Value: KSh ${totalStockValue.toLocaleString(
+        "en-KE",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      )}`,
+      14,
+      34
+    );
+
+    // Product table
+    autoTable(doc, {
+      startY: 40,
+
+      head: [
+        [
+          "Product",
+          "Qty",
+          "Cost Price",
+          "Selling Price",
+          "Stock Value",
+          "SKU",
+        ],
+      ],
+
+      body: catalogueProducts.map((product) => {
+        const quantity = Number(product.quantity ?? 0);
+        const costPrice = Number(product.cost_price ?? 0);
+        const sellingPrice = Number(product.selling_price ?? 0);
+
+        const stockValue = quantity * costPrice;
+
+        return [
+          product.name ?? "",
+          quantity.toString(),
+
+          `KSh ${costPrice.toLocaleString("en-KE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+
+          `KSh ${sellingPrice.toLocaleString("en-KE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+
+          `KSh ${stockValue.toLocaleString("en-KE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+
+          product.sku ?? "",
+        ];
+      }),
+
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        valign: "middle",
+      },
+
+      headStyles: {
+        fontSize: 8,
+        fontStyle: "bold",
+      },
+
+      columnStyles: {
+        0: {
+          cellWidth: 70,
+        },
+        1: {
+          cellWidth: 20,
+          halign: "right",
+        },
+        2: {
+          cellWidth: 35,
+          halign: "right",
+        },
+        3: {
+          cellWidth: 35,
+          halign: "right",
+        },
+        4: {
+          cellWidth: 40,
+          halign: "right",
+        },
+        5: {
+          cellWidth: 50,
+        },
+      },
+
+      margin: {
+        left: 10,
+        right: 10,
+      },
+
+      didDrawPage: () => {
+        const pageNumber = doc.getNumberOfPages();
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+
+        doc.text(
+          "Product Catalogue",
+          10,
+          200
+        );
+
+        doc.text(
+          `Page ${pageNumber}`,
+          287,
+          200,
+          {
+            align: "right",
+          }
+        );
+      },
+    });
+
+    doc.save("Bosslady-Product-Catalogue.pdf");
+
+    toast.success("Product catalogue downloaded successfully.");
+  } catch (error) {
+    console.error("Catalogue download error:", error);
+
+    toast.error(
+      "Failed to generate the product catalogue."
+    );
+  } finally {
+    setDownloadingCatalogue(false);
+  }
+};
 
   const save = useMutation({
     mutationFn: () =>
@@ -122,7 +308,8 @@ function Products() {
         title="Products"
         subtitle="Manage your products, buying costs, selling prices and live stock levels."
         action={
-          <Dialog open={open} onOpenChange={setOpen}>
+          <div className="flex flex-col items-end gap-2">
+            <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="size-4" /> New product
@@ -206,7 +393,7 @@ function Products() {
                           cost_price: Number(e.target.value),
                         })
                       }
-                      placeholder="e.g. 50"
+                     /* placeholder="e.g. 50"*/
                     />
                     <p className="text-xs text-muted-foreground">
                       What you paid for one item.
@@ -294,8 +481,26 @@ function Products() {
 
 
               </form>
-            </DialogContent>
-          </Dialog>
+           </DialogContent>
+            </Dialog>
+
+                 <Button
+                   variant="outline"
+                   onClick={downloadCatalogue}
+                   disabled={downloadingCatalogue || products.isLoading}
+                 >
+                   <Download className="size-4" />
+                   {downloadingCatalogue
+                     ? "Preparing catalogue..."
+                     : "Download Catalogue"}
+                 </Button>
+
+          </div>
+
+
+
+
+
         }
       />
 
