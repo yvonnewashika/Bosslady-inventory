@@ -1,82 +1,70 @@
 
-  name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages
 
-  on:
-    push:
-      branches:
-        - main
-    workflow_dispatch:
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-  permissions:
-    contents: read
-    pages: write
-    id-token: write
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
-  concurrency:
-    group: github-pages
-    cancel-in-progress: true
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
-  jobs:
-    build:
-      runs-on: ubuntu-latest
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-      env:
-        VITE_BASE_PATH: /Bosslady-inventory/
-        VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-        VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_BASE_PATH: ./
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        - name: Set up Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: 22
-            cache: npm
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-        - name: Install dependencies
-          run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-        - name: Build website
-          run: npm run build
+      - name: Build website
+        run: npm run build
 
-        - name: Configure GitHub Pages
-          uses: actions/configure-pages@v5
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
-        - name: Verify build output
-          run: |
-            if [ ! -d dist/client ]; then
-              echo "ERROR: dist/client directory was not generated."
-              exit 1
-            fi
-            
-            if [ ! -f dist/client/index.html ]; then
-              if [ -f dist/client/_shell.html ]; then
-                cp dist/client/_shell.html dist/client/index.html
-              else
-                echo "ERROR: No index.html or _shell.html found."
-                find dist -maxdepth 3 -type f | head -100
-                exit 1
-              fi
-            fi
-            
-            cp dist/client/index.html dist/client/404.html
+      - name: Prepare website files
+        run: |
+          if [ ! -f dist/client/index.html ]; then
+            echo "ERROR: dist/client/index.html was not generated."
+            exit 1
+          fi
+          cp dist/client/index.html dist/client/404.html
 
-        - name: Upload website artifact
-          uses: actions/upload-pages-artifact@v4
-          with:
-            path: dist/client
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/client
 
-    deploy:
-      runs-on: ubuntu-latest
-      needs: build
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
 
-      environment:
-        name: github-pages
-        url: ${{ steps.deployment.outputs.page_url }}
-
-      steps:
-        - name: Deploy website
-          id: deployment
-          uses: actions/deploy-pages@v4
+    steps:
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
