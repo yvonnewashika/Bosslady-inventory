@@ -43,8 +43,8 @@ jobs:
         run: npm ci
 
       - name: Build
-        env:
-          VITE_BASE_PATH: /Bosslady-inventory/
+
+
         run: npm run build
 
       - name: Check build output
@@ -76,5 +76,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
-
+        uses: actions/deploy-pages@v
