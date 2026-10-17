@@ -1,4 +1,5 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches:
@@ -23,42 +24,34 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Check Node and npm versions
-        run: |
-          node --version
-          npm --version
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        env:
-          VITE_BASE_PATH: /Bosslady-inventory/
+      - name: Build website
         run: npm run build
 
-      - name: Check build output
+      - name: Verify build output
         run: |
-          ls -la dist
+          test -d dist/client
+          test -f dist/client/index.html
           ls -la dist/client
 
-      - name: Prepare GitHub Pages
-        run: |
-          cp dist/client/_shell.html dist/client/index.html
-          cp dist/client/_shell.html dist/client/404.html
+      - name: Prepare GitHub Pages files
+        run: cp dist/client/index.html dist/client/404.html
 
-      - name: Setup Pages
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload website artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist/client
@@ -72,7 +65,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
-
