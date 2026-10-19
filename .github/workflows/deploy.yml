@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-build:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -40,9 +40,7 @@ build:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Verify build output
-        run: |
-          test -f dist/client/index.html
-          echo "Build output verified successfully"
+        run: test -f dist/client/index.html
 
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
@@ -50,8 +48,8 @@ build:
           path: dist/client
 
   deploy:
-    needs: build
     runs-on: ubuntu-latest
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -59,4 +57,3 @@ build:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
