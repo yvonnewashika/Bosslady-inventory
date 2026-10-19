@@ -1,6 +1,4 @@
-
 name: Deploy Bosslady Inventory
-
 on:
   push:
     branches:
@@ -19,6 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,8 +38,12 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
-      - name: Verify build output
-        run: test -f dist/client/index.html
+      - name: Prepare GitHub Pages
+        run: |
+          if [ -f dist/client/_shell.html ]; then
+            cp dist/client/_shell.html dist/client/index.html
+          fi
+          test -f dist/client/index.html
 
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
@@ -48,11 +51,12 @@ jobs:
           path: dist/client
 
   deploy:
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
