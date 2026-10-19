@@ -1,4 +1,4 @@
-name: Deploy Bosslady Inventory
+name: Deploy Bosslady-inventory
 on:
   push:
     branches:
