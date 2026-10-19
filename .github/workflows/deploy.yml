@@ -36,16 +36,20 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /Bosslady-inventory/
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Verify build output
         run: |
           test -f dist/client/index.html
           echo "Build output verified successfully"
+
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist/client
-     deploy:
+
+  deploy:
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -55,3 +59,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
