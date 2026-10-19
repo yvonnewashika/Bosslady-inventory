@@ -37,6 +37,11 @@ jobs:
         env:
           VITE_BASE_PATH: /Bosslady-inventory/
 
+      - name: Verify build output
+        run: |
+          test -f dist/client/index.html
+          echo "Build output verified successfully"
+
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
         with:
