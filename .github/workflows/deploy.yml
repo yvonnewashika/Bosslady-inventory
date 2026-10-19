@@ -1,4 +1,4 @@
-name: Deploy Bosslady-inventory
+name: Deploy Github pages
 on:
   push:
     branches:
