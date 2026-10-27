@@ -136,7 +136,7 @@ function Movements() {
             <Input
               id="product-search"
               type="search"
-              placeholder="Type product name or SKU..."
+              /*placeholder="Type product name or SKU..."*/
               value={productSearch}
               onChange={(e) => {
                 setProductSearch(e.target.value);
