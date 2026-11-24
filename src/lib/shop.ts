@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { getMyProfile } from "@/lib/staff";
 import type { Database } from "@/integrations/supabase/types";
@@ -41,20 +42,10 @@ export const PAYMENT_METHODS: {
   { value: "bank", label: "Bank" },
 ];
 
-export const paymentLabel = (
-  m: PaymentMethod,
-) =>
+export const paymentLabel = (method: PaymentMethod) =>
   PAYMENT_METHODS.find(
-    (p) => p.value === m,
-  )?.label ?? m;
-
-async function currentUserId() {
-
-  if (!data.user) {
-  }
-
-  return data.user.id;
-}
+    (item) => item.value === method,
+  )?.label ?? method;
 
 function unwrap<T>({
   data,
@@ -70,10 +61,21 @@ function unwrap<T>({
   return data as T;
 }
 
+async function currentUserId(): Promise<string> {
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error || !data.user) {
+    throw new Error("You need to be signed in.");
+  }
+
+  return data.user.id;
+}
+
 /* ============================================================
    CUSTOMERS
    ============================================================ */
 
+export async function listCustomers(): Promise<Customer[]> {
   return unwrap(
     await supabase
       .from("customers")
@@ -86,7 +88,8 @@ export async function createCustomer(input: {
   name: string;
   phone?: string | null;
   note?: string | null;
-}) {
+}): Promise<Customer> {
+  const user_id = await currentUserId();
 
   return unwrap(
     await supabase
@@ -100,6 +103,8 @@ export async function createCustomer(input: {
   );
 }
 
+export async function deleteCustomer(id: string): Promise<void> {
+  const { error } = await supabase
     .from("customers")
     .delete()
     .eq("id", id);
@@ -109,6 +114,11 @@ export async function createCustomer(input: {
   }
 }
 
+/* ============================================================
+   DEBT PAYMENTS
+   ============================================================ */
+
+export async function listDebtPayments(): Promise<DebtPayment[]> {
   return unwrap(
     await supabase
       .from("debt_payments")
@@ -119,10 +129,17 @@ export async function createCustomer(input: {
   );
 }
 
+export async function createDebtPayment(input: {
   customer_id: string;
   amount: number;
   payment_method: PaymentMethod;
   note?: string | null;
+}): Promise<DebtPayment> {
+  const user_id = await currentUserId();
+
+  if (input.amount <= 0) {
+    throw new Error("Payment amount must be greater than zero.");
+  }
 
   return unwrap(
     await supabase
@@ -154,16 +171,17 @@ export async function listSales(
   return unwrap(
     await db
       .from("sales")
+      .select(`
         *,
         customers(name),
         sale_items(*)
+      `)
       .order("created_at", {
         ascending: false,
       })
       .limit(limit),
   );
 }
-
 
 export async function createSale(input: {
   lines: CartLine[];
@@ -173,63 +191,132 @@ export async function createSale(input: {
   amount_paid: number;
   note?: string | null;
 }) {
+  if (!input.lines.length) {
+    throw new Error("Add at least one product to the sale.");
+  }
 
-    throw new Error(
-      );
-    }
+  const profile = await getMyProfile();
 
+  const user_id = profile.id;
+
+  const business_owner_id =
+    profile.role === "owner"
+      ? profile.id
+      : profile.owner_id;
+
+  if (!business_owner_id) {
+    throw new Error("Could not identify the shop owner.");
+  }
+
+  const subtotal = input.lines.reduce(
     (sum, line) =>
+      sum + line.quantity * line.unit_price,
     0,
   );
 
+  const total = Math.max(
+    subtotal - Math.max(input.discount, 0),
+    0,
+  );
+
+  const cost_total = input.lines.reduce(
     (sum, line) =>
+      sum + line.quantity * line.unit_cost,
     0,
   );
 
   const commissionRate =
     profile.role === "staff"
+      ? Number(profile.commission_rate || 0)
       : 0;
 
   const commissionAmount =
+    (total * commissionRate) / 100;
 
-    user_id: profile.id,
+  for (const line of input.lines) {
+    if (
+      !Number.isInteger(line.quantity) ||
+      line.quantity <= 0
+    ) {
+      throw new Error(
+        `Invalid quantity for ${line.product_name}.`,
+      );
+    }
 
+    if (
+      line.unit_price < 0 ||
+      line.unit_cost < 0
+    ) {
+      throw new Error(
+        `Invalid price for ${line.product_name}.`,
+      );
+    }
+  }
 
+  const saleData = {
+    user_id,
+    business_owner_id,
     staff_id:
       profile.role === "staff"
         ? profile.id
         : null,
-
-
-
+    customer_id: input.customer_id,
+    payment_method: input.payment_method,
     total,
-
     cost_total,
+    discount: Math.max(input.discount, 0),
+    amount_paid: Math.max(input.amount_paid, 0),
+    commission_rate: commissionRate,
+    commission_amount: commissionAmount,
+    note: input.note ?? null,
+  };
 
+  const itemsData = input.lines.map((line) => ({
+    product_id: line.product_id,
+    product_name: line.product_name,
+    quantity: line.quantity,
+    unit_price: line.unit_price,
+    unit_cost: line.unit_cost,
+  }));
 
-
-
-
-
-
+  const { data, error } = await db.rpc("record_sale", {
+    p_sale: saleData,
+    p_items: itemsData,
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
+  return data;
 }
 
-
+export async function deleteSale(id: string): Promise<void> {
+  const profile = await getMyProfile();
 
   if (profile.role !== "owner") {
+    throw new Error("Only the shop owner can delete sales.");
   }
 
+  // Delete sale items first.
+  // The database trigger automatically restores stock.
+
+  const { error: itemsError } = await db
+    .from("sale_items")
+    .delete()
+    .eq("sale_id", id);
+
+  if (itemsError) {
+    throw new Error(itemsError.message);
+  }
+
+  const { error: saleError } = await db
     .from("sales")
     .delete()
     .eq("id", id);
 
-  if (error) {
-    throw new Error(error.message);
+  if (saleError) {
+    throw new Error(saleError.message);
   }
 }
 
@@ -263,10 +350,17 @@ export async function listExpenses(
   );
 }
 
+export async function createExpense(input: {
   category: string;
   description?: string | null;
   amount: number;
   payment_method: PaymentMethod;
+}): Promise<Expense> {
+  const user_id = await currentUserId();
+
+  if (input.amount <= 0) {
+    throw new Error("Expense amount must be greater than zero.");
+  }
 
   return unwrap(
     await supabase
@@ -280,6 +374,8 @@ export async function listExpenses(
   );
 }
 
+export async function deleteExpense(id: string): Promise<void> {
+  const { error } = await supabase
     .from("expenses")
     .delete()
     .eq("id", id);
@@ -293,9 +389,12 @@ export async function listExpenses(
    REPORTING
    ============================================================ */
 
+export const KES = (amount: number): string =>
+  new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
     maximumFractionDigits: 0,
+  }).format(Number(amount) || 0);
 
 export type Range = {
   start: Date;
@@ -303,18 +402,24 @@ export type Range = {
   label: string;
 };
 
-  new Date(
+function startOfDay(d: Date): Date {
+  return new Date(
     d.getFullYear(),
     d.getMonth(),
     d.getDate(),
   );
+}
 
-  new Date(
+function addDays(d: Date, n: number): Date {
+  return new Date(
     d.getFullYear(),
     d.getMonth(),
     d.getDate() + n,
   );
+}
 
+export function presetRange(key: string): Range {
+  const today = startOfDay(new Date());
   const now = new Date();
 
   switch (key) {
@@ -371,6 +476,7 @@ export type Range = {
 
     case "all":
       return {
+        start: new Date(0),
         end: addDays(today, 1),
         label: "All time",
       };
@@ -384,10 +490,15 @@ export type Range = {
   }
 }
 
+function inRange(
+  value: string,
+  range: Range,
+): boolean {
+  const time = new Date(value).getTime();
 
   return (
-    t >= r.start.getTime() &&
-    t < r.end.getTime()
+    time >= range.start.getTime() &&
+    time < range.end.getTime()
   );
 }
 
@@ -401,19 +512,23 @@ export type Summary = {
   itemsSold: number;
   discount: number;
   credit: number;
+  byMethod: Record<PaymentMethod, number>;
 };
 
 export function summarise(
   sales: SaleWithDetails[],
   expenses: Expense[],
-  r: Range,
+  range: Range,
 ): Summary {
-    inRange(x.created_at, r),
+  const filteredSales = sales.filter(
+    (sale) => inRange(sale.created_at, range),
   );
 
-    inRange(x.created_at, r),
+  const filteredExpenses = expenses.filter(
+    (expense) => inRange(expense.created_at, range),
   );
 
+  const byMethod: Record<PaymentMethod, number> = {
     cash: 0,
     mpesa: 0,
     credit: 0,
@@ -426,26 +541,42 @@ export function summarise(
   let itemsSold = 0;
   let credit = 0;
 
-  for (const sale of s) {
+  for (const sale of filteredSales) {
+    revenue += Number(sale.total || 0);
 
+    cost += Number(sale.cost_total || 0);
+
+    discount += Number(sale.discount || 0);
 
     credit += Math.max(
+      Number(sale.total || 0) -
+        Number(sale.amount_paid || 0),
       0,
     );
 
-      0,
-    );
+    byMethod[sale.payment_method] +=
+      Number(sale.amount_paid || 0);
+
+    for (const item of sale.sale_items ?? []) {
+      itemsSold += Number(item.quantity || 0);
+    }
   }
 
+  const totalExpenses = filteredExpenses.reduce(
+    (sum, expense) =>
+      sum + Number(expense.amount || 0),
     0,
   );
 
+  const grossProfit = revenue - cost;
 
   return {
     revenue,
     cost,
     grossProfit,
-    saleCount: s.length,
+    expenses: totalExpenses,
+    netProfit: grossProfit - totalExpenses,
+    saleCount: filteredSales.length,
     itemsSold,
     discount,
     credit,
@@ -453,9 +584,13 @@ export function summarise(
   };
 }
 
+/* ============================================================
+   TOP PRODUCTS
+   ============================================================ */
+
 export function topProducts(
   sales: SaleWithDetails[],
-  r: Range,
+  range: Range,
   limit = 8,
 ) {
   const map = new Map<
@@ -468,31 +603,49 @@ export function topProducts(
     }
   >();
 
-  )) {
+  const filteredSales = sales.filter(
+    (sale) => inRange(sale.created_at, range),
+  );
 
-        name: key,
-        qty: 0,
-        revenue: 0,
-        profit: 0,
-      };
+  for (const sale of filteredSales) {
+    for (const item of sale.sale_items ?? []) {
+      const key = item.product_name;
 
+      if (!map.has(key)) {
+        map.set(key, {
+          name: key,
+          qty: 0,
+          revenue: 0,
+          profit: 0,
+        });
+      }
 
-      entry.revenue +=
+      const entry = map.get(key)!;
 
-      entry.profit +=
-        item.quantity;
+      const quantity = Number(item.quantity || 0);
+      const price = Number(item.unit_price || 0);
+      const cost = Number(item.unit_cost || 0);
 
+      entry.qty += quantity;
+      entry.revenue += quantity * price;
+      entry.profit += quantity * (price - cost);
     }
   }
 
+  return Array.from(map.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, limit);
 }
+
+/* ============================================================
+   DAILY SALES SERIES
+   ============================================================ */
 
 export function dailySeries(
   sales: SaleWithDetails[],
   expenses: Expense[],
   days = 14,
 ) {
-
   const out: {
     date: Date;
     label: string;
@@ -501,45 +654,105 @@ export function dailySeries(
     expenses: number;
   }[] = [];
 
+  const today = startOfDay(new Date());
 
-    const r: Range = {
+  for (let i = days - 1; i >= 0; i--) {
+    const day = addDays(today, -i);
+    const nextDay = addDays(day, 1);
+
+    const range: Range = {
       start: day,
+      end: nextDay,
       label: "",
     };
 
+    const dailySales = sales.filter(
+      (sale) => inRange(sale.created_at, range),
+    );
+
+    const dailyExpenses = expenses.filter(
+      (expense) => inRange(expense.created_at, range),
+    );
+
+    const revenue = dailySales.reduce(
+      (sum, sale) =>
+        sum + Number(sale.total || 0),
+      0,
+    );
+
+    const cost = dailySales.reduce(
+      (sum, sale) =>
+        sum + Number(sale.cost_total || 0),
+      0,
+    );
+
+    const expenseTotal = dailyExpenses.reduce(
+      (sum, expense) =>
+        sum + Number(expense.amount || 0),
+      0,
+    );
 
     out.push({
       date: day,
+      label: day.toLocaleDateString("en-KE", {
         day: "2-digit",
         month: "short",
+      }),
+      revenue,
+      profit: revenue - cost - expenseTotal,
+      expenses: expenseTotal,
     });
   }
 
   return out;
 }
 
+/* ============================================================
+   CUSTOMER BALANCES
+   ============================================================ */
+
 export function customerBalances(
   customers: Customer[],
   sales: SaleWithDetails[],
   payments: DebtPayment[],
 ) {
-      .filter(
-      )
-      .reduce(
-          total +
-          Math.max(
-            0,
-          ),
-        0,
-      );
+  return customers.map((customer) => {
+    const customerSales = sales.filter(
+      (sale) => sale.customer_id === customer.id,
+    );
 
-      .filter(
-      )
-      .reduce(
-        0,
-      );
+    const customerPayments = payments.filter(
+      (payment) => payment.customer_id === customer.id,
+    );
+
+    const totalSales = customerSales.reduce(
+      (total, sale) =>
+        total + Number(sale.total || 0),
+      0,
+    );
+
+    const totalPaid = customerSales.reduce(
+      (total, sale) =>
+        total + Number(sale.amount_paid || 0),
+      0,
+    );
+
+    const debtPayments = customerPayments.reduce(
+      (total, payment) =>
+        total + Number(payment.amount || 0),
+      0,
+    );
+
+    const balance = Math.max(
+      totalSales - totalPaid - debtPayments,
+      0,
+    );
 
     return {
       ...customer,
+      totalSales,
+      totalPaid: totalPaid + debtPayments,
+      balance,
     };
+  });
 }
